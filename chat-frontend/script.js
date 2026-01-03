@@ -1,12 +1,13 @@
-// GANTI DENGAN DOMAIN STB KAMU (Pastikan https:// dan tidak ada spasi)
+// GANTI DENGAN DOMAIN STB KAMU
 const BASE_URL = "https://hakim.tugastst.my.id/api"; 
 
+// Variabel Global
 let myId = null;
 let myUsername = null;
 let currentFriendId = null;
 let refreshInterval = null;
 
-// === TOGGLE HALAMAN ===
+// === TOGGLE HALAMAN LOGIN/REGISTER ===
 function showRegister() {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('register-screen').classList.remove('hidden');
@@ -26,10 +27,9 @@ async function doRegister() {
     const errorMsg = document.getElementById('reg-error');
 
     if (!username || !password) {
-        errorMsg.innerText = "Username & Password wajib diisi!";
+        errorMsg.innerText = "Isi semua kolom!";
         return;
     }
-
     errorMsg.innerText = "Loading...";
 
     try {
@@ -38,24 +38,21 @@ async function doRegister() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
-
         const data = await res.json();
 
         if (res.ok) {
-            alert("Registrasi Berhasil! Silakan Login.");
-            showLogin(); // Pindah ke layar login
-            document.getElementById('login-username').value = username; // Auto-fill
-            document.getElementById('login-password').value = password;
+            alert("Berhasil! Silakan Login.");
+            showLogin();
+            document.getElementById('login-username').value = username;
         } else {
-            errorMsg.innerText = data.error || "Registrasi Gagal (Username mungkin sudah ada)";
+            errorMsg.innerText = data.error || "Gagal Register";
         }
     } catch (err) {
-        console.error(err);
-        errorMsg.innerText = "Gagal koneksi ke server. (Cek CORS/Internet)";
+        errorMsg.innerText = "Error koneksi.";
     }
 }
 
-// === FUNGSI LOGIN ===
+// === FUNGSI LOGIN (UPDATE PENTING) ===
 async function doLogin() {
     const username = document.getElementById('login-username').value;
     const password = document.getElementById('login-password').value;
@@ -70,128 +67,124 @@ async function doLogin() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
-
         const data = await res.json();
 
         if (res.ok) {
-            // SIMPAN DATA LOGIN
-            myId = data.id || data.user.id; // Jaga-jaga struktur respon beda
-            myUsername = username;
-            
-            masukKeAplikasi();
+            // 1. SIMPAN DATA KE BROWSER (Agar tidak hilang saat refresh)
+            const userData = {
+                id: data.id || data.user.id,
+                username: username
+            };
+            localStorage.setItem('chat_user', JSON.stringify(userData));
+
+            // 2. PINDAH HALAMAN
+            window.location.href = 'index.html';
         } else {
-            errorMsg.innerText = "Username atau Password salah!";
+            errorMsg.innerText = "Username/Password Salah!";
         }
     } catch (err) {
-        console.error(err);
-        errorMsg.innerText = "Gagal koneksi. Cek Console (F12) untuk detail.";
+        errorMsg.innerText = "Gagal koneksi server.";
     }
 }
 
-function masukKeAplikasi() {
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('chat-app').classList.remove('hidden');
-    document.getElementById('my-avatar').innerText = myUsername.substring(0,2).toUpperCase();
-    loadContacts();
-}
-
+// === LOGOUT ===
 function logout() {
-    location.reload(); // Refresh halaman simpel
+    if(confirm("Yakin mau keluar?")) {
+        localStorage.removeItem('chat_user'); // Hapus sesi
+        window.location.href = 'login.html'; // Balik ke login
+    }
 }
 
 // ================= MANAJEMEN KONTAK =================
-
-// 1. Load Kontak dari Database (Bukan dummy lagi)
 async function loadContacts() {
     const list = document.getElementById('contact-list');
-    list.innerHTML = ""; 
-
-    // Tombol Tambah Teman (Tetap ada di paling atas)
-    const addBtn = document.createElement('div');
-    addBtn.className = 'contact-item';
-    addBtn.innerHTML = `
-        <div class="avatar" style="background: #00a884;">+</div>
-        <div class="contact-info"><h4>Tambah Teman</h4><p>Cari via Username</p></div>
-    `;
-    addBtn.onclick = addFriendPrompt;
-    list.appendChild(addBtn);
-
-    // FETCH DARI BACKEND
+    // Jangan clear innerHTML total agar tidak kedip parah, tapi untuk tugas simpel, clear aja gpp.
+    // Kita simpan tombol tambah teman biar gak hilang
+    const addBtnHTML = `
+        <div class="contact-item" onclick="addFriendPrompt()">
+            <div class="avatar" style="background: #00a884;">+</div>
+            <div class="contact-info"><h4>Tambah Teman</h4><p>Cari via Username</p></div>
+        </div>`;
+    
     try {
         const res = await fetch(`${BASE_URL}/friends/${myId}`);
         const contacts = await res.json();
-
-        // Render semua teman yang tersimpan
+        
+        // Render Ulang
+        list.innerHTML = addBtnHTML; 
         contacts.forEach(friend => {
             addContactToUI(friend.id, friend.username);
         });
     } catch (err) {
-        console.error("Gagal ambil kontak", err);
+        console.error("Gagal load kontak");
     }
 }
 
-// 2. Tambah Teman Pakai Username Saja
 async function addFriendPrompt() {
     const friendUsername = prompt("Masukkan Username Teman:");
     if (!friendUsername) return;
 
-    // Panggil API Baru
     try {
         const res = await fetch(`${BASE_URL}/friends/add`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ myId: myId, friendUsername: friendUsername })
         });
-
         const data = await res.json();
 
         if (res.ok) {
-            alert("Teman berhasil ditambahkan!");
-            // Update UI langsung tanpa refresh
-            addContactToUI(data.contact.id, data.contact.username);
-            openChat(data.contact.id, data.contact.username);
+            alert("Berhasil berteman!");
+            // Refresh manual sekali biar langsung muncul (walau ada auto refresh)
+            loadContacts();
         } else {
             alert("Gagal: " + data.error);
         }
     } catch (err) {
-        console.error(err);
-        alert("Error koneksi ke server");
+        alert("Error server");
     }
 }
 
-// Helper untuk render UI (Sama seperti sebelumnya)
 function addContactToUI(id, username) {
-    if (document.getElementById(`contact-${id}`)) return; 
+    // Kalau sudah ada, jangan double (tapi cek ID agar update status active tetap jalan)
+    if (document.getElementById(`contact-${id}`)) return;
 
     const list = document.getElementById('contact-list');
     const div = document.createElement('div');
     div.className = 'contact-item';
     div.id = `contact-${id}`;
+    
+    // Cek apakah ini teman yang sedang dibuka chatnya?
+    if(id === currentFriendId) div.classList.add('active');
+
     div.innerHTML = `
         <div class="avatar">${username.substring(0,2).toUpperCase()}</div>
         <div class="contact-info">
             <h4>${username}</h4>
-            <p>Klik untuk chat</p>
+            <p>Klik untuk chat</p> 
         </div>
     `;
     div.onclick = () => openChat(id, username);
     list.appendChild(div);
 }
-// === LOGIC CHAT (Sama seperti sebelumnya) ===
+
+// ================= FITUR CHAT =================
 function openChat(friendId, friendName) {
     currentFriendId = friendId;
+    
+    // Update UI Header
     document.getElementById('chat-header').style.display = 'flex';
     document.getElementById('chat-footer').style.display = 'flex';
     document.getElementById('current-friend-name').innerText = friendName;
     document.getElementById('friend-avatar').innerText = friendName.substring(0,2).toUpperCase();
     
-    // Reset active class
+    // Manage Class Active
     document.querySelectorAll('.contact-item').forEach(el => el.classList.remove('active'));
-    document.getElementById(`contact-${friendId}`).classList.add('active');
+    const activeContact = document.getElementById(`contact-${friendId}`);
+    if(activeContact) activeContact.classList.add('active');
 
     loadMessages();
     if (refreshInterval) clearInterval(refreshInterval);
-    refreshInterval = setInterval(loadMessages, 3000);
+    refreshInterval = setInterval(loadMessages, 3000); // Poll chat tiap 3 detik
 }
 
 async function loadMessages() {
@@ -200,7 +193,7 @@ async function loadMessages() {
         const res = await fetch(`${BASE_URL}/chat/history?myId=${myId}&friendId=${currentFriendId}`);
         const msgs = await res.json();
         renderMessages(msgs);
-    } catch (e) { console.error("Gagal load chat", e); }
+    } catch (e) { console.error(e); }
 }
 
 function renderMessages(messages) {
@@ -214,6 +207,7 @@ function renderMessages(messages) {
         div.innerHTML = `${msg.content}<span class="message-time">${time}</span>`;
         container.appendChild(div);
     });
+    // Auto scroll bottom
     container.scrollTop = container.scrollHeight;
 }
 
@@ -221,8 +215,8 @@ async function sendMessage() {
     const input = document.getElementById('message-input');
     const text = input.value;
     if (!text) return;
+    input.value = ""; 
     
-    input.value = ""; // Kosongkan input
     try {
         await fetch(`${BASE_URL}/chat/send`, {
             method: 'POST',
@@ -233,54 +227,31 @@ async function sendMessage() {
     } catch (e) { alert("Gagal kirim"); }
 }
 
-// Enter key send
-document.getElementById('message-input').addEventListener("keypress", (e) => {
-    if(e.key === "Enter") sendMessage();
-});
-// ... kode js sebelumnya ...
-
-// ================= FITUR PROFIL & GANTI PASSWORD =================
-
-function openProfile() {
-    document.getElementById('profile-modal').classList.remove('hidden');
+// Enter key send listener
+const msgInput = document.getElementById('message-input');
+if(msgInput){
+    msgInput.addEventListener("keypress", (e) => {
+        if(e.key === "Enter") sendMessage();
+    });
 }
 
-function closeProfile() {
-    document.getElementById('profile-modal').classList.add('hidden');
-    document.getElementById('new-password').value = ""; // Bersihkan input
-}
+// ================= PROFIL & PASSWORD =================
+function openProfile() { document.getElementById('profile-modal').classList.remove('hidden'); }
+function closeProfile() { document.getElementById('profile-modal').classList.add('hidden'); }
 
 async function doChangePassword() {
     const newPass = document.getElementById('new-password').value;
-
-    if (!newPass || newPass.length < 3) {
-        alert("Password minimal 3 karakter dong!");
-        return;
-    }
-
-    // Konfirmasi dulu biar gak kepencet
-    if (!confirm("Yakin mau ganti password?")) return;
+    if (!newPass || newPass.length < 3) return alert("Password kependekan!");
+    if (!confirm("Ganti password?")) return;
 
     try {
         const res = await fetch(`${BASE_URL}/auth/change-password`, {
-            method: 'POST', // Sesuai router.post kamu
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: myId,       // Kita ambil myId dari variabel global saat login
-                newPassword: newPass
-            })
+            body: JSON.stringify({ userId: myId, newPassword: newPass })
         });
-
         const data = await res.json();
-
-        if (res.ok) {
-            alert("Sukses! " + data.message);
-            closeProfile();
-        } else {
-            alert("Gagal: " + (data.error || "Terjadi kesalahan server"));
-        }
-    } catch (err) {
-        console.error(err);
-        alert("Error koneksi ke backend");
-    }
+        if (res.ok) { alert("Sukses!"); closeProfile(); } 
+        else { alert("Gagal: " + data.error); }
+    } catch (err) { alert("Error backend"); }
 }
