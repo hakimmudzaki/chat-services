@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import router from './routes.js';
 import { initDB } from './infrastructure/db.js';
+import { setupSwagger } from './swagger/swagger.js';
 
 dotenv.config();
 
@@ -20,6 +21,9 @@ app.use(express.json());
 
 // Serve static files dari folder chat-frontend
 app.use(express.static(path.join(__dirname, '../chat-frontend')));
+
+// Setup Swagger UI dokumentasi API
+setupSwagger(app);
 
 // Init Database saat start
 initDB().then(() => {
