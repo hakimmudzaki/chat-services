@@ -21,6 +21,9 @@ COPY package*.json ./
 RUN npm install --production
 COPY --from=builder /app/dist ./dist
 
+# Copy folder frontend untuk static files
+COPY chat-frontend ./chat-frontend
+
 # Buat folder data agar tidak error saat mounting volume
 RUN mkdir data
 
