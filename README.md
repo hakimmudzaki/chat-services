@@ -4,6 +4,14 @@ Aplikasi Chat sederhana - Tugas Teknologi Sistem Terintegrasi
 
 Created by Mudzaki Kaarzaqiel Hakim - 18223024
 
+## Link
+
+| Keterangan | URL |
+|------------|-----|
+| Link Layanan Terintegrasi | https://chat-services.vercel.app/ |
+| API Message Services | http://hakim.tugastst.my.id/ |
+| API Docs Message Services | https://hakim.tugastst.my.id/api-docs/ |
+
 ## Struktur Folder
 
 ```
@@ -30,6 +38,10 @@ chat-services/
 │   │
 │   └── swagger/            # API Documentation
 │       └── swagger.ts      # Konfigurasi Swagger UI
+│
+├── docs/                   # Laporan tugas
+│   ├── TUGAS 1 - Merancang Layanan_18223024.pdf
+│   └── TUGAS 2 - Mengembangkan Layanan Microservices_18223024.pdf
 │
 ├── data/                   # Database folder (JSON files)
 ├── Dockerfile              # Docker configuration
